@@ -15,6 +15,11 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Include the files for different functionalities
+include_once plugin_dir_path(__FILE__) . 'includes/database.php';
+include_once plugin_dir_path(__FILE__) . 'includes/display-order-points.php';
+include_once plugin_dir_path(__FILE__) . 'includes/custom-order-points.php';
+
 
 
 // Hook into order placement
@@ -26,6 +31,9 @@ function award_points_on_order($order_id)
     $user_id = $order->get_user_id();
     $order_count = 0;
 
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'custom_points_table';
+
     if ($user_id) {
         $order_count = wc_get_customer_order_count($user_id);
     }
@@ -36,6 +44,30 @@ function award_points_on_order($order_id)
         $points_earned = floor($order_total / 100); // 1 point for every 100 yen spent
         $total_points = $points_earned + 300;
         update_user_meta($user_id, 'customer_points', $total_points);
+
+        // Insert the first row for getting 300 points for the first order
+        $insert_data_first_order = array(
+            'used_id' => $user_id,
+            'mvt_date' => current_time('mysql'),
+            'points_moved' => 300,
+            'new_total' => 300,
+            'commentar' => 'Get 300 points for the first order #' . $order_id,
+            'order_id' => $order_id,
+        );
+
+        $wpdb->insert($table_name, $insert_data_first_order);
+
+        // Insert the second row for getting points based on amount spent
+        $insert_data_points_based_on_spent = array(
+            'used_id' => $user_id,
+            'mvt_date' => current_time('mysql'),
+            'points_moved' => $points_earned,
+            'new_total' => $total_points,
+            'commentar' => 'Get ' . $points_earned . ' points from the order #' . $order_id,
+            'order_id' => $order_id,
+        );
+
+        $wpdb->insert($table_name, $insert_data_points_based_on_spent);
     } elseif ($order_count > 1) {
         // Calculate points for subsequent orders
         $order_total = $order->get_total();
@@ -43,6 +75,17 @@ function award_points_on_order($order_id)
         $current_points = get_user_meta($user_id, 'customer_points', true);
         $total_points = $current_points + $points_earned;
         update_user_meta($user_id, 'customer_points', $total_points);
+
+        $insert_data = array(
+            'used_id' => $user_id,
+            'mvt_date' => current_time('mysql'),
+            'points_moved' => $points_earned,
+            'new_total' => $total_points,
+            'commentar' => 'Get ' . $points_earned . ' points from the order #' . $order_id,
+            'order_id' => $order_id,
+        );
+
+        $wpdb->insert($table_name, $insert_data);
     }
 }
 
@@ -156,19 +199,38 @@ function deduct_points_after_order($order_id)
 {
     $order = wc_get_order($order_id);
     $user_id = $order->get_user_id();
-    $current_points = get_user_meta($user_id, 'customer_points', true);
+    $order_count = wc_get_customer_order_count($user_id);
 
-    // Get the points used from the meta field
-    $points_used = get_user_meta($user_id, 'points_used_for_coupon', true);
-    $points_used = $points_used ? intval($points_used) : 0;
+    if ($order_count > 1) {
+        $current_points = get_user_meta($user_id, 'customer_points', true);
 
-    // Calculate the remaining points after deduction
-    $total_points = max(0, $current_points - $points_used);
-    error_log("Current Point: $current_points");
-    error_log("Point Used: $points_used");
-    error_log("Total Point: $total_points");
+        // Get the points used from the meta field
+        $points_used = get_user_meta($user_id, 'points_used_for_coupon', true);
+        $points_used = $points_used ? intval($points_used) : 0;
 
-    update_user_meta($user_id, 'customer_points', $total_points); // Update the user's points
+        // Calculate the remaining points after deduction
+        $total_points = max(0, $current_points - $points_used);
+        error_log("Current Point: $current_points");
+        error_log("Point Used: $points_used");
+        error_log("Total Point: $total_points");
+
+        update_user_meta($user_id, 'customer_points', $total_points); // Update the user's points
+
+        // Insert a row for deducting points from the order
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'custom_points_table';
+
+        $insert_data = array(
+            'used_id' => $user_id,
+            'mvt_date' => current_time('mysql'),
+            'points_moved' => -$points_used, // Deducted points
+            'new_total' => $total_points,
+            'commentar' => 'Used ' . $points_used . ' points from the order #' . $order_id,
+            'order_id' => $order_id,
+        );
+
+        $wpdb->insert($table_name, $insert_data);
+    }
 }
 
 // Hook into order placement
@@ -189,3 +251,31 @@ function enqueue_custom_js()
         'ajax_url' => admin_url('admin-ajax.php'),
     ));
 }
+
+
+
+function enqueue_points_change_script($hook)
+{
+    global $post;
+
+    if ('shop_order' === $post->post_type && 'post.php' === $hook) {
+        wp_enqueue_script(
+            'custom-points-handler',
+            plugin_dir_url(__FILE__) . 'custom-points-handler.js',
+            array('jquery'),
+            '1.0',
+            true
+        );
+
+        // Localize necessary variables
+        wp_localize_script(
+            'custom-points-handler',
+            'ajax_object',
+            array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'security' => wp_create_nonce('add_remove_points_nonce')
+            )
+        );
+    }
+}
+add_action('admin_enqueue_scripts', 'enqueue_points_change_script');
