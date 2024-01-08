@@ -22,11 +22,11 @@ function display_add_remove_points_meta_box($post)
         <input type="hidden" id="order_id" name="order_id" value="<?php echo esc_attr($order_id); ?>">
         <label for="points_to_add"><?php _e('Points Amount to Add:', 'add-remove-points'); ?></label>
         <input style="margin-bottom: 8px;" type="number" id="points_to_add" name="points_to_add" value="0" min="0">
-        <button type="button" id="add_points_button" class="button"><?php _e('Add Points', 'add-remove-points'); ?></button>
+        <button style="background: #08810d;color:#ffffff; padding: 2px 6px;" type="button" id="add_points_button" class="button"><?php _e('(+)Add Points', 'add-remove-points'); ?></button>
         <br><br>
         <label for="points_to_subtract"><?php _e('Points Amount to Subtract:', 'add-remove-points'); ?></label>
         <input style="margin-bottom: 8px;" type="number" id="points_to_subtract" name="points_to_subtract" value="0" min="0">
-        <button type="button" id="subtract_points_button" class="button"><?php _e('Subtract Points', 'add-remove-points'); ?></button>
+        <button style="background: #e72314; color:#ffffff; padding: 2px 6px;" type="button" id="subtract_points_button" class="button"><?php _e('(-)Subtract Points', 'add-remove-points'); ?></button>
     </div>
 <?php
 }

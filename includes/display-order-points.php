@@ -42,7 +42,7 @@ function display_order_points_meta_box_content($post)
     );
 
     if ($points_data) {
-        echo '<p><strong>' . __('Current Points of the', 'display-order-points') . ' ' . esc_html($customer_email) . ':</strong> <b style="color: green;font-size:18px;">' . esc_html($current_points) . '</b></p>';
+        echo '<p><strong>' . __('Current Points of the', 'display-order-points') . ' ' . esc_html($customer_email) . ':</strong> <b style="color: green;font-size:16px;">' . esc_html($current_points) . '</b></p>';
 ?>
         <table class="widefat">
             <thead>

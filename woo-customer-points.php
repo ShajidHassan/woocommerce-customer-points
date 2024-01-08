@@ -23,7 +23,8 @@ include_once plugin_dir_path(__FILE__) . 'includes/custom-order-points.php';
 
 
 // Hook into order placement
-add_action('woocommerce_new_order', 'award_points_on_order', 10, 1);
+// add_action('woocommerce_new_order', 'award_points_on_order', 10, 1);
+add_action('woocommerce_order_status_completed', 'award_points_on_order', 10, 1);
 
 function award_points_on_order($order_id)
 {
@@ -110,6 +111,8 @@ function display_user_points_function($atts)
 
 // Hook into WooCommerce checkout before billing and shipping section
 add_action('woocommerce_before_checkout_form', 'display_points_input_field');
+// Hook into the 'woocommerce_before_cart' action to add the form before the cart table
+add_action('woocommerce_after_cart_table', 'display_points_input_field');
 
 function display_points_input_field()
 {
@@ -119,17 +122,21 @@ function display_points_input_field()
     // Check if the field hasn't been displayed yet
     if ($user_points && !did_action('custom_points_field_displayed')) {
 ?>
-        <div class="custom-points-field" style="margin-bottom: 30px;">
+        <div class="custom-points-field">
             <?php
             ?>
-            <h4><?php esc_html_e('Available Points:', 'woo-customer-points'); ?> <?php echo esc_html($user_points); ?></h4>
-            <div class="points-row">
-                <p>
-                    <label for="points_to_use"><?php esc_html_e('Points to Use:', 'woo-customer-points'); ?></label>
-                    <input type="number" id="points_to_use" name="points_to_use" value="0" min="0" max="<?php echo esc_attr($user_points); ?>">
-                </p>
-                <button type="button" id="use_all_points" class="button"><?php esc_html_e('Use All', 'woo-customer-points'); ?></button>
-                <button type="button" id="apply_points" class="button"><?php esc_html_e('Apply Points', 'woo-customer-points'); ?></button>
+            <h4><b><?php esc_html_e('Available Points:', 'woo-customer-points'); ?> <?php echo esc_html($user_points); ?></b></h4>
+            <div class="points-row row">
+                <div class="col-md-5">
+                    <p>
+                        <label for="points_to_use"><?php esc_html_e('Points to Use:', 'woo-customer-points'); ?></label>
+                        <input class="input-text" type="number" id="points_to_use" name="points_to_use" value="0" min="0" max="<?php echo esc_attr($user_points); ?>">
+                    </p>
+                </div>
+                <div class="col-md-5 d-flex align-items-end">
+                    <button type="button" id="use_all_points" class="button"><?php esc_html_e('Use All', 'woo-customer-points'); ?></button>
+                    <button type="button" id="apply_points" class="button"><?php esc_html_e('Apply Points', 'woo-customer-points'); ?></button>
+                </div>
             </div>
         </div>
 <?php
@@ -137,8 +144,6 @@ function display_points_input_field()
         do_action('custom_points_field_displayed');
     }
 }
-
-
 
 
 // Function to apply points as a coupon code
@@ -156,24 +161,33 @@ function apply_points_as_coupon()
         if ($points_to_use <= $user_points && $points_to_use > 0) {
             $coupon_code = 'POINT-' . uniqid();
 
-            // Check if a coupon for points redemption already exists
-            $existing_coupon = new WC_Coupon($coupon_code);
+            // Create a coupon array
+            $coupon = array(
+                'post_title' => $coupon_code,
+                'post_content' => '',
+                'post_status' => 'publish',
+                'post_author' => 1,
+                'post_type' => 'shop_coupon'
+            );
 
-            if ($existing_coupon->get_id()) {
-                // Update the existing coupon instead of creating a new one
-                $coupon_id = $existing_coupon->get_id();
-            } else {
-                // Create a new coupon
-                $new_coupon = new WC_Coupon();
-                $new_coupon->set_code($coupon_code);
-                $new_coupon->set_discount_type('fixed_cart');
-                $new_coupon->set_amount($points_to_use);
-                $new_coupon->set_individual_use(true);
-                $new_coupon->set_meta_data('is_point_redemption_coupon', 'yes'); // Set metadata for points redemption coupon
-                $new_coupon->save();
+            // Insert the coupon into the database
+            $new_coupon_id = wp_insert_post($coupon);
 
-                $coupon_id = $new_coupon->get_id();
-            }
+            // Load the coupon by ID
+            $new_coupon = new WC_Coupon($new_coupon_id);
+
+            // Set coupon data
+            $new_coupon->set_discount_type('fixed_cart');
+            $new_coupon->set_amount($points_to_use);
+            $new_coupon->set_individual_use(true);
+
+            $new_coupon->set_usage_limit(1);
+
+            // Save the coupon
+            $new_coupon->save();
+
+            // Set metadata for the coupon using update_post_meta()
+            update_post_meta($new_coupon_id, 'is_point_redemption_coupon', 'yes');
 
             // Apply the coupon to the cart
             WC()->cart->apply_coupon($coupon_code);
@@ -194,6 +208,8 @@ function apply_points_as_coupon()
     }
 }
 
+
+
 // Function to deduct points after the order is placed
 function deduct_points_after_order($order_id)
 {
@@ -210,9 +226,6 @@ function deduct_points_after_order($order_id)
 
         // Calculate the remaining points after deduction
         $total_points = max(0, $current_points - $points_used);
-        error_log("Current Point: $current_points");
-        error_log("Point Used: $points_used");
-        error_log("Total Point: $total_points");
 
         update_user_meta($user_id, 'customer_points', $total_points); // Update the user's points
 
@@ -244,7 +257,7 @@ add_action('wp_enqueue_scripts', 'enqueue_custom_js');
 
 function enqueue_custom_js()
 {
-    wp_enqueue_script('custom-points-handler', plugin_dir_url(__FILE__) . 'points-handler.js', array('jquery'), '1.0', true);
+    wp_enqueue_script('custom-points-handler', plugin_dir_url(__FILE__) . 'js/points-handler.js', array('jquery'), '1.0', true);
 
     // Localize necessary variables
     wp_localize_script('custom-points-handler', 'wc_checkout_params', array(
@@ -261,7 +274,7 @@ function enqueue_points_change_script($hook)
     if ('shop_order' === $post->post_type && 'post.php' === $hook) {
         wp_enqueue_script(
             'custom-points-handler',
-            plugin_dir_url(__FILE__) . 'custom-points-handler.js',
+            plugin_dir_url(__FILE__) . 'js/custom-points-handler.js',
             array('jquery'),
             '1.0',
             true
@@ -279,3 +292,26 @@ function enqueue_points_change_script($hook)
     }
 }
 add_action('admin_enqueue_scripts', 'enqueue_points_change_script');
+
+
+// Enqueue custom script for the cart widget
+function enqueue_custom_cart_script()
+{
+    wp_enqueue_script('custom-cart-script', plugin_dir_url(__FILE__) . 'js/custom-cart-script.js', array('jquery'), '1.0', true);
+
+    // Localize necessary variables (if needed)
+    wp_localize_script('custom-cart-script', 'cart_ajax_params', array(
+        'ajax_url' => admin_url('admin-ajax.php'),
+    ));
+}
+add_action('wp_enqueue_scripts', 'enqueue_custom_cart_script');
+
+
+
+
+// Enqueue CSS file
+function enqueue_custom_css()
+{
+    wp_enqueue_style('custom-style', plugin_dir_url(__FILE__) . 'css/style.css');
+}
+add_action('wp_enqueue_scripts', 'enqueue_custom_css');
