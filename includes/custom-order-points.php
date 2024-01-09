@@ -55,6 +55,7 @@ function handle_points_change()
 
                 // Get the current user's display name or login
                 $current_user = wp_get_current_user();
+                $current_user_id = $current_user->ID;
                 $user_name = $current_user->display_name ? $current_user->display_name : $current_user->user_login;
 
                 // Insert a row in the database with the points change
@@ -66,8 +67,9 @@ function handle_points_change()
                     'mvt_date' => current_time('mysql'),
                     'points_moved' => $points_changed,
                     'new_total' => $updated_points,
-                    'commentar' => ($points_changed > 0 ? 'Added ' : 'Subtracted ') . abs($points_changed) . ' points by ' . $user_name,
+                    'commentar' => ($points_changed > 0 ? 'Added ' : 'Subtracted ') . abs($points_changed) . ' points by Customer Representative ',
                     'order_id' => $order_id,
+                    'given_by' => $current_user_id,
                 );
 
                 $wpdb->insert($table_name, $insert_data);

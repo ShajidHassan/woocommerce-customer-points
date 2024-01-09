@@ -23,6 +23,7 @@ function create_custom_table()
         origin2 BIGINT(19) DEFAULT NULL,
         order_id INT(10) DEFAULT 0,
         blog_id INT(10) DEFAULT 1,
+        given_by BIGINT(19) NOT NULL,
         PRIMARY KEY  (id)
     ) $charset_collate;";
 

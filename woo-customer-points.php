@@ -54,6 +54,7 @@ function award_points_on_order($order_id)
             'new_total' => 300,
             'commentar' => 'Get 300 points for the first order #' . $order_id,
             'order_id' => $order_id,
+            'given_by' => $user_id,
         );
 
         $wpdb->insert($table_name, $insert_data_first_order);
@@ -66,6 +67,7 @@ function award_points_on_order($order_id)
             'new_total' => $total_points,
             'commentar' => 'Get ' . $points_earned . ' points from the order #' . $order_id,
             'order_id' => $order_id,
+            'given_by' => $user_id,
         );
 
         $wpdb->insert($table_name, $insert_data_points_based_on_spent);
@@ -84,6 +86,7 @@ function award_points_on_order($order_id)
             'new_total' => $total_points,
             'commentar' => 'Get ' . $points_earned . ' points from the order #' . $order_id,
             'order_id' => $order_id,
+            'given_by' => $user_id,
         );
 
         $wpdb->insert($table_name, $insert_data);
@@ -240,6 +243,7 @@ function deduct_points_after_order($order_id)
             'new_total' => $total_points,
             'commentar' => 'Used ' . $points_used . ' points from the order #' . $order_id,
             'order_id' => $order_id,
+            'given_by' => $user_id,
         );
 
         $wpdb->insert($table_name, $insert_data);
