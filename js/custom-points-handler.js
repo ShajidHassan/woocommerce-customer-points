@@ -9,6 +9,10 @@ jQuery(document).ready(function($) {
             order_id: orderId
         };
 
+        // Disable both buttons
+        $('#add_points_button').prop('disabled', true);
+        $('#subtract_points_button').prop('disabled', true);
+
         $.ajax({
             type: 'POST',
             url: ajax_object.ajax_url,
@@ -22,6 +26,10 @@ jQuery(document).ready(function($) {
             error: function(errorThrown) {
                 // Handle error
                 console.error('Points change failed: ' + errorThrown);
+                alert('Points change failed: ' + errorThrown);
+                // Re-enable both buttons
+                $('#add_points_button').prop('disabled', false);
+                $('#subtract_points_button').prop('disabled', false);
             }
         });
     }

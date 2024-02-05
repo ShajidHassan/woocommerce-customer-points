@@ -47,19 +47,42 @@ function display_order_points_meta_box_content($post)
         <table class="widefat">
             <thead>
                 <tr>
-                    <th><b><?php esc_html_e('Comments', 'display-order-points'); ?></b></th>
-                    <th><b><?php esc_html_e('Points Moved', 'display-order-points'); ?></b></th>
-                    <th><b><?php esc_html_e('New Total', 'display-order-points'); ?></b></th>
-                    <th><b><?php esc_html_e('Given By', 'display-order-points'); ?></b></th>
-                    <th><b><?php esc_html_e('Date', 'display-order-points'); ?></b></th>
+                    <th><b>
+                            <?php esc_html_e('Comments', 'display-order-points'); ?>
+                        </b></th>
+                    <th><b>
+                            <?php esc_html_e('Points Moved', 'display-order-points'); ?>
+                        </b></th>
+                    <th><b>
+                            <?php esc_html_e('New Total', 'display-order-points'); ?>
+                        </b></th>
+                    <th><b>
+                            <?php esc_html_e('Given By', 'display-order-points'); ?>
+                        </b></th>
+                    <th><b>
+                            <?php esc_html_e('Date', 'display-order-points'); ?>
+                        </b></th>
                 </tr>
             </thead>
+
+
             <tbody>
                 <?php
                 foreach ($points_data as $data) {
                     $points_moved = $data->points_moved;
                     $new_total = $data->new_total;
                     $commentar = $data->commentar;
+
+                    // if $commentar is serialized, unserialize it
+                    if (is_serialized($commentar)) {
+                        $commentar = maybe_unserialize($commentar);
+                        // If the unserialized data is an array and has at least 3 elements
+                        if (is_array($commentar) && count($commentar) >= 3) {
+                            // Use sprintf to replace the placeholders in the first element with the second and third elements
+                            $commentar = sprintf($commentar[0], $commentar[1], $commentar[2]);
+                        }
+                    }
+
                     $mvt_date = $data->mvt_date;
 
                     // Fetching user data using given_by ID
@@ -72,11 +95,21 @@ function display_order_points_meta_box_content($post)
                     $display_name_style = $is_customer ? '' : 'color:#ff5722;font-weight:500;';
                 ?>
                     <tr>
-                        <td><?php echo esc_html($commentar); ?></td>
-                        <td><?php echo esc_html($points_moved); ?></td>
-                        <td><?php echo esc_html($new_total); ?></td>
-                        <td style="<?php echo esc_attr($display_name_style); ?>"><?php echo esc_html($given_by_display_name); ?></td>
-                        <td><?php echo esc_html($mvt_date); ?></td>
+                        <td>
+                            <?php echo esc_html($commentar); ?>
+                        </td>
+                        <td>
+                            <?php echo esc_html($points_moved); ?>
+                        </td>
+                        <td>
+                            <?php echo esc_html($new_total); ?>
+                        </td>
+                        <td style="<?php echo esc_attr($display_name_style); ?>">
+                            <?php echo esc_html($given_by_display_name); ?>
+                        </td>
+                        <td>
+                            <?php echo esc_html($mvt_date); ?>
+                        </td>
                     </tr>
                 <?php
                 }
@@ -120,22 +153,52 @@ function display_points_history_on_user_page()
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th><b><?php esc_html_e('Comments', 'display-order-points'); ?></b></th>
-                        <th><b><?php esc_html_e('New Total', 'display-order-points'); ?></b></th>
-                        <th><b><?php esc_html_e('Date', 'display-order-points'); ?></b></th>
+                        <th><b>
+                                <?php esc_html_e('Comments', 'display-order-points'); ?>
+                            </b></th>
+                        <th><b>
+                                <?php esc_html_e('Points Added/Subtracted', 'display-order-points'); ?>
+                            </b></th>
+                        <th><b>
+                                <?php esc_html_e('New Total', 'display-order-points'); ?>
+                            </b></th>
+                        <th><b>
+                                <?php esc_html_e('Date', 'display-order-points'); ?>
+                            </b></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
                     foreach ($points_data as $data) {
+                        $points_moved = $data->points_moved;
                         $new_total = $data->new_total;
                         $commentar = $data->commentar;
+
+                        // if $commentar is serialized, unserialize it
+                        if (is_serialized($commentar)) {
+                            $commentar = maybe_unserialize($commentar);
+                            // If the unserialized data is an array and has at least 3 elements
+                            if (is_array($commentar) && count($commentar) >= 3) {
+                                // Use sprintf to replace the placeholders in the first element with the second and third elements
+                                $commentar = sprintf($commentar[0], $commentar[1], $commentar[2]);
+                            }
+                        }
+
                         $mvt_date = $data->mvt_date;
                     ?>
                         <tr>
-                            <td><?php echo esc_html($commentar); ?></td>
-                            <td><?php echo esc_html($new_total); ?></td>
-                            <td><?php echo esc_html(date('j F, Y', strtotime($mvt_date))); ?></td>
+                            <td>
+                                <?php echo esc_html($commentar); ?>
+                            </td>
+                            <td>
+                                <?php echo esc_html($points_moved); ?>
+                            </td>
+                            <td>
+                                <?php echo esc_html($new_total); ?>
+                            </td>
+                            <td>
+                                <?php echo esc_html(date('j F, Y', strtotime($mvt_date))); ?>
+                            </td>
                         </tr>
                     <?php
                     }

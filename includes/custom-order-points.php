@@ -32,6 +32,7 @@ function display_add_remove_points_meta_box($post)
 }
 
 // Function to handle point addition/subtraction AJAX request
+// Function to handle point addition/subtraction AJAX request
 function handle_points_change()
 {
     check_ajax_referer('add_remove_points_nonce', 'security');
@@ -40,6 +41,7 @@ function handle_points_change()
         $points_to_add = intval($_POST['points_to_add']);
         $points_to_subtract = intval($_POST['points_to_subtract']);
         $order_id = intval($_POST['order_id']);
+        
 
         $points_changed = $points_to_add - $points_to_subtract;
 
@@ -49,8 +51,10 @@ function handle_points_change()
 
             if ($user_id) {
                 // Update user meta with the new points
+
                 $current_points = get_user_meta($user_id, 'customer_points', true);
-                $updated_points = max(0, $current_points + $points_changed);
+                // $updated_points = max(0, $current_points + $points_changed);
+                $updated_points = ($current_points !== '') ? max(0, $current_points + $points_changed) : max(0, $points_changed);
                 update_user_meta($user_id, 'customer_points', $updated_points);
 
                 // Get the current user's display name or login
@@ -73,6 +77,23 @@ function handle_points_change()
                 );
 
                 $wpdb->insert($table_name, $insert_data);
+
+                //Generate order note after adding or subtracting the points
+                $order = wc_get_order($order_id);
+                if ($order) {
+                    $added_or_deducted_text = ($points_changed > 0) ? 'Added' : 'Deducted';
+                    $add_or_deduct_amount = abs($points_changed);
+
+                    $order->add_order_note(
+                        sprintf(
+                            __('Points %s: %s', 'woocommerce'),
+                            $added_or_deducted_text,
+                            $add_or_deduct_amount
+                        ),
+                        true, // Is Customer Note (Show the Email Note Customer Also)
+                        true // Add Username for Admin Log
+                    );
+                }
 
                 // Return a success response
                 wp_send_json_success('Points updated successfully');
