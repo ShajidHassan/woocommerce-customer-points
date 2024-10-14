@@ -1,0 +1,35 @@
+.custom-points-field{
+    margin-bottom: 30px;
+    border: 1px solid #d5d3d3;
+    padding:20px;
+    border-radius:6px;
+}
+
+.points-row button{
+    margin-right: 5px;
+}
+
+.points-row label{
+    margin-bottom: 0;
+}
+
+.points-row input{
+    border: 1px solid #888c8c!important;
+    background: #ffffff!important;
+    padding-bottom: 10px;
+}
+
+.points-row input:focus{
+    background-color: #F7FEFF!important;
+    border-color: #28a745!important;
+    box-shadow: 0 0 0 3px #badaa9, 0 1px 2px rgb(15 17 17 / 15%) inset;
+}
+
+@media (min-width:768px){
+    .points-row p{
+        margin-bottom: 0;
+    }
+    .points-row .col-md-5{
+        padding-right: 0;
+    }
+}
