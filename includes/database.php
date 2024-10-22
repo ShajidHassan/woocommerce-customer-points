@@ -19,6 +19,7 @@ function create_custom_table()
         points_moved INT(10) DEFAULT 0,
         new_total INT(10) DEFAULT 0,
         commentar TEXT,
+        points_reason TEXT DEFAULT NULL,
         origin TINYTEXT DEFAULT NULL,
         origin2 BIGINT(19) DEFAULT NULL,
         order_id INT(10) DEFAULT 0,

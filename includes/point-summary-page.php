@@ -373,6 +373,7 @@ function display_point_summary($start_date, $end_date)
     <?php
     // Display the point summary data in an accordion
     ?>
+    <!-- Points Earned from Orders section-->
     <div class="accordion">
         <h3 class="accordion-header">Points Earned from Orders <span class="accordion-icon">+</span></h3>
         <div class="accordion-content">
@@ -411,8 +412,38 @@ function display_point_summary($start_date, $end_date)
             </table>
         </div>
 
+
+        <!-- Points Given by Customer Reprsentative section-->
         <h3 class="accordion-header">Points Given by Customer Reprsentative <span class="accordion-icon">+</span></h3>
         <div class="accordion-content">
+            <!-- Points Reason Filter -->
+            <?php
+            global $wpdb;
+
+            // Get all unique reasons from the custom points table
+            $reasons = $wpdb->get_results(
+                "SELECT DISTINCT points_reason 
+         FROM {$wpdb->prefix}custom_points_table 
+         WHERE points_reason IS NOT NULL 
+         AND points_reason != ''"
+            );
+            ?>
+            <div class="points-type-filter">
+                <label for="points_reason_filter">Filter by Points Given Type: </label>
+                <select id="points_reason_filter_given" name="points_reason_filter_given">
+                    <option value="all">All Types</option> <!-- Default option to show all -->
+                    <?php if ($reasons): ?>
+                        <?php foreach ($reasons as $reason): ?>
+                            <option value="<?php echo esc_attr($reason->points_reason); ?>">
+                                <?php echo esc_html($reason->points_reason); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <option value="no-data">No Reasons Available</option> <!-- Display when no reasons found -->
+                    <?php endif; ?>
+                </select>
+            </div>
+
             <table class="wp-list-table widefat fixed striped table-view-list">
                 <thead>
                     <tr>
@@ -424,10 +455,10 @@ function display_point_summary($start_date, $end_date)
                         <th>Date</th>
                     </tr>
                 </thead>
-                <tbody id="the-list">
+                <tbody id="the-list-given">
                     <?php $serial_number = 1; ?>
                     <?php foreach ($points_given as $point): ?>
-                        <tr>
+                        <tr class="point-row-given" data-reason="<?php echo esc_attr($point->points_reason); ?>">
                             <td style="width: 50px;"><?php echo esc_html($serial_number++); ?></td>
                             <td><?php echo esc_html($point->name); ?></td>
                             <td>
@@ -435,7 +466,7 @@ function display_point_summary($start_date, $end_date)
                                     <?php echo esc_html($point->order_id); ?>
                                 </a>
                             </td>
-                            <td><?php echo esc_html($point->points); ?></td>
+                            <td class="points-value-given"><?php echo esc_html($point->points); ?></td>
                             <td><?php echo esc_html($point->points_reason); ?></td>
                             <td><?php echo esc_html(date('Y-m-d', strtotime($point->move_date))); ?></td>
                         </tr>
@@ -444,12 +475,16 @@ function display_point_summary($start_date, $end_date)
                 <tfoot>
                     <tr>
                         <th style="font-weight: 600; font-size:16px;color:blue;" colspan="3">Total</th>
-                        <th style="font-weight: 600; font-size:16px;color:blue;" colspan="2"><?php echo esc_html($total_given); ?></th>
+                        <th id="total-points-given" style="font-weight: 600; font-size:16px;color:blue;" colspan="2">
+                            <?php echo esc_html($total_given); ?>
+                        </th>
                     </tr>
                 </tfoot>
             </table>
         </div>
 
+
+        <!-- Points Used in Order section-->
         <h3 class="accordion-header">Points Used in Order <span class="accordion-icon">+</span></h3>
         <div class="accordion-content">
             <table class="wp-list-table widefat fixed striped table-view-list">
@@ -600,6 +635,14 @@ function display_point_summary($start_date, $end_date)
         .chart-values li {
             margin-bottom: 5px;
         }
+
+        #points_reason_filter_given {
+            width: 200px;
+        }
+
+        .points-type-filter {
+            margin-bottom: 10px;
+        }
     </style>
 
     <script>
@@ -610,6 +653,46 @@ function display_point_summary($start_date, $end_date)
 
                 const icon = $(this).find('.accordion-icon');
                 icon.text(icon.text() === '+' ? '−' : '+');
+            });
+
+            // Points Reason Filter logic
+            $('#points_reason_filter').change(function() {
+                var selectedReason = $(this).val().toLowerCase();
+
+                $('#the-list tr').each(function() {
+                    var rowReason = $(this).find('td:nth-child(5)').text().toLowerCase();
+
+                    if (selectedReason === "" || rowReason === selectedReason) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+
+            // Filter logic for Points Reason dropdown
+            $('#points_reason_filter_given').on('change', function() {
+                var selectedReason = $(this).val();
+                var totalPoints = 0;
+
+                // Loop through each row to apply the filter for 'Points Given' section
+                $('#the-list-given tr.point-row-given').each(function() {
+                    var rowReason = $(this).data('reason');
+
+                    // Show or hide the row based on the selected reason
+                    if (selectedReason === 'all' || rowReason === selectedReason) {
+                        $(this).show();
+
+                        // Add up the points for visible rows
+                        var points = parseFloat($(this).find('.points-value-given').text());
+                        totalPoints += points;
+                    } else {
+                        $(this).hide();
+                    }
+                });
+
+                // Update the total points for the 'Points Given' section
+                $('#total-points-given').text(totalPoints);
             });
         });
     </script>

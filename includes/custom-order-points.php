@@ -41,7 +41,7 @@ function display_add_remove_points_meta_box($post)
 
         <!-- Reason for Adding Points (Textarea) -->
         <label for="points_to_add_reason"><?php _e('Reason for Adding Points', 'add-remove-points'); ?></label>
-        <textarea style="margin-bottom: 8px;width: 100%;" id="points_to_add_reason" name="points_to_add_reason" required></textarea>
+        <textarea style="margin-bottom: 8px;width: 100%;" id="points_to_add_reason" name="points_to_add_reason"></textarea>
         <br>
 
         <!-- Add Points Button -->
