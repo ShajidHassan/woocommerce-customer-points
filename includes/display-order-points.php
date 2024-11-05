@@ -131,10 +131,10 @@ function display_order_points_meta_box_content($post)
 
 
 
-
 // Shortcode to show the point history on the user page
 function display_points_history_on_user_page()
 {
+    ob_start();
     echo '<h3><strong>Point History</strong></h3>';
     if (is_user_logged_in()) {
         $user_id = get_current_user_id();
@@ -160,18 +160,10 @@ function display_points_history_on_user_page()
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th><b>
-                                <?php esc_html_e('Comments', 'display-order-points'); ?>
-                            </b></th>
-                        <th><b>
-                                <?php esc_html_e('Points Added/Subtracted', 'display-order-points'); ?>
-                            </b></th>
-                        <th><b>
-                                <?php esc_html_e('New Total', 'display-order-points'); ?>
-                            </b></th>
-                        <th><b>
-                                <?php esc_html_e('Date', 'display-order-points'); ?>
-                            </b></th>
+                        <th><b><?php esc_html_e('Comments', 'display-order-points'); ?></b></th>
+                        <th><b><?php esc_html_e('Points Added/Subtracted', 'display-order-points'); ?></b></th>
+                        <th><b><?php esc_html_e('New Total', 'display-order-points'); ?></b></th>
+                        <th><b><?php esc_html_e('Date', 'display-order-points'); ?></b></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -194,18 +186,10 @@ function display_points_history_on_user_page()
                         $mvt_date = $data->mvt_date;
                     ?>
                         <tr>
-                            <td>
-                                <?php echo esc_html($commentar); ?>
-                            </td>
-                            <td>
-                                <?php echo esc_html($points_moved); ?>
-                            </td>
-                            <td>
-                                <?php echo esc_html($new_total); ?>
-                            </td>
-                            <td>
-                                <?php echo esc_html(date('j F, Y', strtotime($mvt_date))); ?>
-                            </td>
+                            <td><?php echo esc_html($commentar); ?></td>
+                            <td><?php echo esc_html($points_moved); ?></td>
+                            <td><?php echo esc_html($new_total); ?></td>
+                            <td><?php echo esc_html(date('j F, Y', strtotime($mvt_date))); ?></td>
                         </tr>
                     <?php
                     }
@@ -219,5 +203,7 @@ function display_points_history_on_user_page()
     } else {
         echo esc_html__('Please log in to view your points history.', 'display-order-points');
     }
+
+    return ob_get_clean();
 }
 add_shortcode('wcp_display_points_history', 'display_points_history_on_user_page');
