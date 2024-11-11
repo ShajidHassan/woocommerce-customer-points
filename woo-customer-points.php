@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Woo Customer Points
  * Description: A plugin to manage customer points in WooCommerce.
- * Version: 2.0.1
+ * Version: 2.0.2
  * Author: Mirailit Limited
  * Author URI: https://mirailit.com/
  * Text Domain: woo-customer-points
@@ -34,27 +34,33 @@ function award_points_on_order($order_id)
 
     $order = wc_get_order($order_id);
     $user_id = $order->get_user_id();
-    $order_count = 0;
 
     // Check if points have already been awarded for this order
     if (get_post_meta($order_id, '_points_awarded', true)) {
         return; // Points already awarded, so exit the function
     }
 
+    // Check if the user exists
+    if (!$user_id) {
+        return;
+    }
+
     global $wpdb;
     $table_name = $wpdb->prefix . 'custom_points_table';
 
-    if ($user_id) {
-        $order_count = wc_get_customer_order_count($user_id);
-    }
+    // Get the count of the user's completed orders
+    $completed_order_count = count(wc_get_orders(array(
+        'customer_id' => $user_id,
+        'status'      => 'completed',
+    )));
 
     // Get settings values
     $first_order_points = get_option('woo_first_order_points', 300);
     $points_per_currency_spent = get_option('woo_points_per_currency_spent', 1);
     $currency_unit_for_points = get_option('woo_currency_unit_for_points', 100);
 
-    if ($order_count === 1) {
-        // For the first order, award 300 points
+    if ($completed_order_count === 1) {
+        // For the first completed order, award 300 points plus points based on amount spent
         $order_total = $order->get_total();
         $points_earned = floor($order_total / $currency_unit_for_points) * $points_per_currency_spent;
         $total_points = $points_earned + $first_order_points;
@@ -85,7 +91,7 @@ function award_points_on_order($order_id)
         );
 
         $wpdb->insert($table_name, $insert_data_points_based_on_spent);
-    } elseif ($order_count > 1) {
+    } elseif ($completed_order_count > 1) {
         // Calculate points for subsequent orders
         $order_total = floatval($order->get_total());
         $points_earned = floor($order_total / $currency_unit_for_points) * $points_per_currency_spent;
