@@ -30,6 +30,10 @@ function woo_customer_points_register_settings()
 
     // Register settings for currency unit for points calculation
     register_setting('woo_customer_points_settings_group', 'woo_currency_unit_for_points');
+
+    // Settings for referral points
+    register_setting('woo_customer_points_settings_group', 'woo_referral_points');
+    register_setting('woo_customer_points_settings_group', 'woo_referred_user_points');
 }
 add_action('admin_init', 'woo_customer_points_register_settings');
 
@@ -65,6 +69,22 @@ function woo_customer_points_settings_page_content()
                     <td>
                         <input type="number" name="woo_currency_unit_for_points" value="<?php echo esc_attr(get_option('woo_currency_unit_for_points', 100)); ?>" min="1" />
                         <p class="description"><?php esc_html_e('Currency amount required to earn points. e.g., 100 yen = 1 point.', 'woo-customer-points'); ?></p>
+                    </td>
+                </tr>
+
+                <tr valign="top">
+                    <th scope="row"><?php esc_html_e('Referral Points (Referrer)', 'woo-customer-points'); ?></th>
+                    <td>
+                        <input type="number" name="woo_referral_points" value="<?php echo esc_attr(get_option('woo_referral_points', 200)); ?>" min="0" />
+                        <p class="description"><?php esc_html_e('Points awarded to the referrer when a referred user completes their first order.', 'woo-customer-points'); ?></p>
+                    </td>
+                </tr>
+
+                <tr valign="top">
+                    <th scope="row"><?php esc_html_e('Referral Points (Referred User)', 'woo-customer-points'); ?></th>
+                    <td>
+                        <input type="number" name="woo_referred_user_points" value="<?php echo esc_attr(get_option('woo_referred_user_points', 100)); ?>" min="0" />
+                        <p class="description"><?php esc_html_e('Points awarded to the referred user upon completing their first order.', 'woo-customer-points'); ?></p>
                     </td>
                 </tr>
             </table>

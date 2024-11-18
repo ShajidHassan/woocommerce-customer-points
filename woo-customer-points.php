@@ -23,6 +23,7 @@ include_once plugin_dir_path(__FILE__) . 'includes/user-points-page.php';
 include_once plugin_dir_path(__FILE__) . 'includes/use-points-from-order.php';
 include_once plugin_dir_path(__FILE__) . 'includes/point-summary-page.php';
 include_once plugin_dir_path(__FILE__) . 'includes/admin/settings-page.php';
+include_once plugin_dir_path(__FILE__) . 'includes/referral-points.php';
 
 
 // Hook into order placement
@@ -85,7 +86,7 @@ function award_points_on_order($order_id)
             'mvt_date' => current_time('mysql'),
             'points_moved' => $points_earned,
             'new_total' => $total_points,
-            'commentar' => 'Awarded ' . $points_earned . ' points for order #' . $order_id,
+            'commentar' => 'Get ' . $points_earned . ' points from the order #' . $order_id,
             'order_id' => $order_id,
             'given_by' => $user_id,
         );

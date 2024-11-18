@@ -179,7 +179,7 @@ function display_point_summary($start_date, $end_date)
      INNER JOIN {$wpdb->users} u ON c.used_id = u.ID
      WHERE c.mvt_date >= %s AND c.mvt_date < %s
      AND c.points_moved > 0
-     AND c.commentar LIKE 'Get % points from the order %'
+     AND c.commentar REGEXP 'Get [0-9]+ points from the order|First order bonus points for being referred by|Awarded [0-9]+ points for order|Awarded [0-9]+ points for first order|Referral bonus points'
      ORDER BY c.mvt_date DESC",
         $start_date,
         $end_date_plus_one
@@ -247,7 +247,7 @@ function display_point_summary($start_date, $end_date)
          INNER JOIN {$wpdb->users} u ON c.used_id = u.ID
          WHERE c.mvt_date BETWEEN %s AND %s
          AND c.points_moved > 0
-         AND c.commentar LIKE 'Get % points from the order %'
+        AND c.commentar REGEXP 'Get [0-9]+ points from the order|First order bonus points for being referred by|Awarded [0-9]+ points for order|Awarded [0-9]+ points for first order|Referral bonus points'
          GROUP BY c.used_id
          ORDER BY total_points DESC
          LIMIT 5",
