@@ -4,28 +4,69 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// reusable function for referral code generation
+function get_or_generate_referral_code($user_id)
+{
+    // Check if the referral code already exists
+    $referral_code = get_user_meta($user_id, 'custom_referral_code', true);
+
+    if (!$referral_code) {
+        // Generate a unique referral code
+        $hashed_id = strtoupper(substr(md5($user_id . 'secure_key'), 0, 10)); // 10-character hash
+        $referral_code = 'USER-' . $hashed_id;
+
+        // Save the referral code in user meta
+        update_user_meta($user_id, 'custom_referral_code', $referral_code);
+    }
+
+    return $referral_code;
+}
+
+
 // Display referral link in the account page
 add_action('woocommerce_account_dashboard', 'display_referral_link_in_account');
 function display_referral_link_in_account()
 {
+    // Get the current user ID
     $user_id = get_current_user_id();
 
-    // Retrieve the existing referral code or generate a new one
-    $referral_code = get_user_meta($user_id, 'custom_referral_code', true);
+    // Retrieve or generate the referral code
+    $referral_code = get_or_generate_referral_code($user_id);
 
-    if (!$referral_code) {
-        // Generate the referral code by hashing the user ID
-        $hashed_id = strtoupper(substr(md5($user_id . 'secure_key'), 0, 10)); // 10-character hash
-        $referral_code = 'USER-' . $hashed_id;
-
-        // Save the referral code in user meta for reuse
-        update_user_meta($user_id, 'custom_referral_code', $referral_code);
-    }
-
-    // Display the referral link
+    // Generate the referral link
     $referral_link = home_url('/?ref=' . $referral_code);
+
+    // Display the referral link in the WooCommerce account dashboard
     echo '<p>Your Referral Link: <a href="' . esc_url($referral_link) . '">' . esc_html($referral_link) . '</a></p>';
 }
+
+// Ensure the same centralized logic is used for API requests
+add_action('rest_api_init', function () {
+    add_filter('woocommerce_rest_prepare_product_object', 'generate_referral_code_on_api_call', 10, 3);
+});
+
+function generate_referral_code_on_api_call($response, $object, $request)
+{
+    if (is_user_logged_in()) {
+        $user_id = get_current_user_id();
+        // Generate or retrieve the referral code
+        get_or_generate_referral_code($user_id);
+    }
+
+    return $response;
+}
+
+// Trigger referral code generation when a logged-in user visits the homepage
+add_action('template_redirect', 'generate_referral_code_on_homepage_visit');
+function generate_referral_code_on_homepage_visit()
+{
+    if (is_user_logged_in() && is_front_page()) {
+        $user_id = get_current_user_id();
+        // Generate or retrieve the referral code
+        get_or_generate_referral_code($user_id);
+    }
+}
+
 
 // Store Referral ID in session and transient when detected in URL
 add_action('wp_loaded', 'set_referral_id');
@@ -238,4 +279,40 @@ function award_referral_points_on_first_order($order_id, $order)
     clear_referral_data($order_id, $user_id);
 
     error_log("Referral points awarded for order ID $order_id.");
+}
+
+
+
+// Hook into the REST API customer endpoint
+add_action('rest_api_init', 'add_completed_orders_to_customer_api');
+
+function add_completed_orders_to_customer_api()
+{
+    // Add a custom field for 'total_completed_orders' to the customer endpoint
+    register_rest_field(
+        'customer', // The endpoint we are targeting (customer)
+        'total_completed_orders', // Custom field name
+        array(
+            'get_callback' => 'get_completed_orders_for_customer', // Function to calculate total orders
+            'update_callback' => null, // No need to update this field
+            'schema' => null, // No need for schema
+        )
+    );
+}
+
+// Function to calculate total completed orders for a specific customer
+function get_completed_orders_for_customer($object)
+{
+    $user_id = $object['id']; // Get the user_id from the customer object
+
+    // Use wc_get_orders to fetch completed orders for the specific user
+    $orders = wc_get_orders([
+        'customer_id' => $user_id,
+        'status'      => 'completed',
+        'limit'       => -1, // Fetch all orders
+        'return'      => 'ids', // Fetch only the IDs for efficiency
+    ]);
+
+    // Return the count of completed orders
+    return count($orders);
 }
