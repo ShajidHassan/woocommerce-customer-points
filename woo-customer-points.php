@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Woo Customer Points
  * Description: A plugin to manage customer points in WooCommerce.
- * Version: 1.0.0
+ * Version: 2.0.2
  * Author: Mirailit Limited
  * Author URI: https://mirailit.com/
  * Text Domain: woo-customer-points
@@ -21,7 +21,9 @@ include_once plugin_dir_path(__FILE__) . 'includes/display-order-points.php';
 include_once plugin_dir_path(__FILE__) . 'includes/custom-order-points.php';
 include_once plugin_dir_path(__FILE__) . 'includes/user-points-page.php';
 include_once plugin_dir_path(__FILE__) . 'includes/use-points-from-order.php';
-
+include_once plugin_dir_path(__FILE__) . 'includes/point-summary-page.php';
+include_once plugin_dir_path(__FILE__) . 'includes/admin/settings-page.php';
+include_once plugin_dir_path(__FILE__) . 'includes/referral-points.php';
 
 
 // Hook into order placement
@@ -30,49 +32,51 @@ add_action('woocommerce_order_status_completed', 'award_points_on_order', 10, 1)
 
 function award_points_on_order($order_id)
 {
+
     $order = wc_get_order($order_id);
     $user_id = $order->get_user_id();
-    $order_count = 0;
+
+    // Check if points have already been awarded for this order
+    if (get_post_meta($order_id, '_points_awarded', true)) {
+        return; // Points already awarded, so exit the function
+    }
+
+    // Check if the user exists
+    if (!$user_id) {
+        return;
+    }
 
     global $wpdb;
     $table_name = $wpdb->prefix . 'custom_points_table';
 
-    if ($user_id) {
-        $order_count = wc_get_customer_order_count($user_id);
-    }
+    // Get the count of the user's completed orders
+    $completed_order_count = count(wc_get_orders(array(
+        'customer_id' => $user_id,
+        'status' => 'completed',
+    )));
 
-    if ($order_count === 1) {
-        // For the first order, award 300 points
+    // Get settings values
+    $first_order_points = get_option('woo_first_order_points', 300);
+    $points_per_currency_spent = get_option('woo_points_per_currency_spent', 1);
+    $currency_unit_for_points = get_option('woo_currency_unit_for_points', 100);
+
+    if ($completed_order_count === 1) {
+        // For the first completed order, award 300 points plus points based on amount spent
         $order_total = $order->get_total();
-        $points_earned = floor($order_total / 100); // 1 point for every 100 yen spent
-        $total_points = $points_earned + 300;
+        $points_earned = floor($order_total / $currency_unit_for_points) * $points_per_currency_spent;
+        $total_points = $points_earned + $first_order_points;
         update_user_meta($user_id, 'customer_points', $total_points);
 
-        // Insert the first row for getting 300 points for the first order
+        // Insert the first row for getting points for the first order
         $insert_data_first_order = array(
             'used_id' => $user_id,
             'mvt_date' => current_time('mysql'),
-            'points_moved' => 300,
-            'new_total' => 300,
-            'commentar' => 'Awarded 300 points for first order #' . $order_id,
+            'points_moved' => $first_order_points,
+            'new_total' => $first_order_points,
+            'commentar' => 'Awarded ' . $first_order_points . ' points for first order #' . $order_id,
             'order_id' => $order_id,
             'given_by' => $user_id,
         );
-
-        /*
-        wp_custom_points_table - wp_lws_wr_historic
-        used_id - user_id
-        mvt_date - mvt_dwp db query "INSERT INTO wp_custom_points_table (used_id, mvt_date, points_moved, new_total, commentar, order_id, given_by, origin, origin2, blog_id)
-SELECT user_id, mvt_date, points_moved, new_total, commentar, order_id, origin2, origin, origin2, blog_id FROM wp_lws_wr_historic"ate
-        points_moved - points_moved
-        new_total - new_total
-        commentar - commentar
-        order_id - order_id
-        given_by - origin2
-        origin - origin
-        origin2 - origin2
-        blog_id - blog_id
-        */
 
         $wpdb->insert($table_name, $insert_data_first_order);
 
@@ -82,17 +86,17 @@ SELECT user_id, mvt_date, points_moved, new_total, commentar, order_id, origin2,
             'mvt_date' => current_time('mysql'),
             'points_moved' => $points_earned,
             'new_total' => $total_points,
-            'commentar' => 'Awarded ' . $points_earned . ' points for order #' . $order_id,
+            'commentar' => 'Get ' . $points_earned . ' points from the order #' . $order_id,
             'order_id' => $order_id,
             'given_by' => $user_id,
         );
 
         $wpdb->insert($table_name, $insert_data_points_based_on_spent);
-    } elseif ($order_count > 1) {
+    } elseif ($completed_order_count > 1) {
         // Calculate points for subsequent orders
-        $order_total = $order->get_total();
-        $points_earned = floor($order_total / 100); // 1 point for every 100 yen spent
-        $current_points = get_user_meta($user_id, 'customer_points', true);
+        $order_total = floatval($order->get_total());
+        $points_earned = floor($order_total / $currency_unit_for_points) * $points_per_currency_spent;
+        $current_points = intval(get_user_meta($user_id, 'customer_points', true));
         $total_points = $current_points + $points_earned;
         update_user_meta($user_id, 'customer_points', $total_points);
 
@@ -108,6 +112,8 @@ SELECT user_id, mvt_date, points_moved, new_total, commentar, order_id, origin2,
 
         $wpdb->insert($table_name, $insert_data);
     }
+    // Mark the order as processed to avoid duplicate points
+    update_post_meta($order_id, '_points_awarded', true);
 }
 
 
@@ -166,7 +172,7 @@ function display_points_input_field()
 
     // Check if the field hasn't been displayed yet
     if ($user_points && !did_action('custom_points_field_displayed')) {
-?>
+        ?>
         <div class="custom-points-field">
             <?php
             ?>
@@ -180,20 +186,19 @@ function display_points_input_field()
                         <label for="points_to_use">
                             <?php esc_html_e('Points to Use:', 'woo-customer-points'); ?>
                         </label>
-                        <input class="input-text" type="number" id="points_to_use" name="points_to_use" value="0" min="0" max="<?php echo esc_attr($user_points); ?>">
+                        <input class="input-text" type="number" id="points_to_use" name="points_to_use" value="0" min="0"
+                            max="<?php echo esc_attr($user_points); ?>">
                     </p>
                 </div>
                 <div class="col-md-5 d-flex align-items-end">
-                    <button type="button" id="use_all_points" class="button">
-                        <?php esc_html_e('Use All', 'woo-customer-points'); ?>
-                    </button>
-                    <button type="button" id="apply_points" class="button">
-                        <?php esc_html_e('Apply Points', 'woo-customer-points'); ?>
-                    </button>
+                    <button type="button" id="use_all_points"
+                        class="button"><?php esc_html_e('Use All', 'woo-customer-points'); ?></button>
+                    <button type="button" id="apply_points"
+                        class="button"><?php esc_html_e('Apply Points', 'woo-customer-points'); ?></button>
                 </div>
             </div>
         </div>
-<?php
+        <?php
         // Set an action hook to mark that the field has been displayed
         do_action('custom_points_field_displayed');
     }
@@ -210,6 +215,7 @@ function apply_points_as_coupon()
         $points_to_use = intval($_POST['points_to_use']);
         $current_user = wp_get_current_user();
         $user_id = $current_user->ID;
+        $user_email = $current_user->user_email;
         $user_points = get_user_meta($current_user->ID, 'customer_points', true);
 
         $existing_coupon_code = get_user_meta($user_id, 'points_redemption_coupon_code', true);
@@ -240,6 +246,8 @@ function apply_points_as_coupon()
 
                 $new_coupon->set_usage_limit(1);
                 $new_coupon->set_usage_limit_per_user(1);
+                // Restrict coupon to user's email
+                $new_coupon->set_email_restrictions(array($user_email));
 
                 $new_coupon->save();
 
@@ -262,6 +270,8 @@ function apply_points_as_coupon()
                 $existing_coupon->set_amount($points_to_use);
                 $existing_coupon->set_usage_limit(1);
                 $existing_coupon->set_usage_limit_per_user(1);
+                // Restrict coupon to user's email
+                $existing_coupon->set_email_restrictions(array($user_email));
                 $existing_coupon->save();
 
                 // Apply the updated coupon to the cart
@@ -286,6 +296,10 @@ function apply_points_as_coupon()
 
 // Hook into order completion event to delete coupon
 add_action('woocommerce_order_status_processing', 'delete_generated_coupons_after_order', 10, 1);
+// Hook into order on-hold event
+add_action('woocommerce_order_status_on-hold', 'delete_generated_coupons_after_order', 10, 1);
+// Hook into order cancelled event
+add_action('woocommerce_order_status_cancelled', 'delete_generated_coupons_after_order', 10, 1);
 
 function delete_generated_coupons_after_order($order_id)
 {
@@ -441,21 +455,23 @@ function return_points_after_order_cancellation($order_id)
 
 
 
-// Enqueue the JavaScript file
+// Enqueue the JavaScript file conditionally
 add_action('wp_enqueue_scripts', 'enqueue_custom_js');
 
 function enqueue_custom_js()
 {
-    wp_enqueue_script('custom-points-handler', plugin_dir_url(__FILE__) . 'js/points-handler.js', array('jquery'), '1.1', true);
+    if (is_checkout()) {
+        wp_enqueue_script('custom-points-handler', plugin_dir_url(__FILE__) . 'js/points-handler.js', array('jquery'), '1.2', true);
 
-    // Localize necessary variables
-    wp_localize_script(
-        'custom-points-handler',
-        'wc_checkout_params',
-        array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-        )
-    );
+        // Localize necessary variables with a unique name
+        wp_localize_script(
+            'custom-points-handler',
+            'custom_wc_checkout_params',
+            array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+            )
+        );
+    }
 }
 
 
@@ -469,7 +485,7 @@ function enqueue_points_change_script($hook)
         'custom-points-handler',
         plugin_dir_url(__FILE__) . 'js/custom-points-handler.js',
         array('jquery'),
-        '1.0',
+        '1.1',
         true
     );
 

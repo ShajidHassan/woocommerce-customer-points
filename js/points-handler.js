@@ -1,6 +1,10 @@
 jQuery(document).ready(function ($) {
     $('#apply_points').on('click', function () {
+        var button = $(this);
         var pointsToUse = $('#points_to_use').val();
+
+         // Disable the button to prevent multiple clicks
+         button.prop('disabled', true);
 
         $.ajax({
             type: 'POST',
@@ -12,6 +16,11 @@ jQuery(document).ready(function ($) {
             success: function (response) {
                 // Reload or update the checkout page
                 location.reload();
+            },
+            error: function () {
+                // Re-enable the button in case of an error
+                button.prop('disabled', false);
+                alert('Failed to apply points. Please try again.');
             }
         });
     });

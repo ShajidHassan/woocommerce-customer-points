@@ -11,7 +11,7 @@ function custom_user_list_menu()
     add_menu_page(
         'User Points',
         'User Points',
-        'manage_options',
+        'edit_shop_orders',
         'custom-user-points-list',
         'custom_user_list_points_page',
         // Add point or gift dashicon
@@ -374,14 +374,14 @@ class Custom_User_List_Table extends WP_List_Table
         return array(
             'cb'             => '<input type="checkbox" />',
             'user_email'     => 'Email',
-            'customer_points' => 'Customer Points',
+            'customer_points' => 'User"s Total Points',
             'points-history' => 'Points History',
         );
     }
 
     function prepare_items()
     {
-        $per_page = 10;
+        $per_page = 30;
 
         $columns = $this->get_columns();
         $hidden = array();
@@ -411,11 +411,20 @@ class Custom_User_List_Table extends WP_List_Table
 
         $data = array();
         foreach ($users->get_results() as $user) {
+
+            $display_name = !empty($user->display_name) ? $user->display_name : '(No Name)';
+    
+            // Get the edit user link
+            $user_edit_link = get_edit_user_link($user->ID);
+
             $data[] = array(
                 'ID'             => $user->ID,
                 'user_email'     => $user->user_email,
+                'user_edit_link' => $user_edit_link, // Add the profile edit link
+                'display_name'   => $display_name,  // Add display name
                 'customer_points' => get_user_meta($user->ID, 'customer_points', true),
             );
+
         }
 
         $this->items = $data;
@@ -430,6 +439,9 @@ class Custom_User_List_Table extends WP_List_Table
     {
         switch ($column_name) {
             case 'user_email':
+            $email_link = '<a href="' . esc_url($item['user_edit_link']) . '" target="_blank">' . esc_html($item[$column_name]) . '</a>';
+            // Combine the email link with the display name
+            return $email_link . ' (' . esc_html($item['display_name']) . ')';
             case 'customer_points':
                 return $item[$column_name];
             case 'points-history':
@@ -463,7 +475,7 @@ add_action('wp_ajax_get_user_points_history', 'get_user_points_history');
 function get_user_points_history()
 {
     $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
-    error_log('User ID: ' . $user_id); // Check the user ID
+    // error_log('User ID: ' . $user_id); // Check the user ID
 
     if ($user_id > 0) {
         $points_history = get_user_points_history_function($user_id);
@@ -476,7 +488,7 @@ function get_user_points_history()
     } else {
         wp_send_json_error(array('message' => 'User ID not found.'));
     }
-    error_log('Function called');
+    // error_log('Function called');
 }
 
 
